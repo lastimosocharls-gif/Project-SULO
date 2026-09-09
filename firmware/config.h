@@ -2,18 +2,38 @@
 #define CONFIG_H
 
 // ─── WiFi Configuration ───
-// Local network only — no internet required
-#define WIFI_SSID       "SULO_Local"
-#define WIFI_PASSWORD   "sulo2026"
+// Supports both local network and internet (for cloud mode)
+#define WIFI_SSID       "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"
 #define WIFI_TIMEOUT_MS 15000
 
-// ─── Backend Server ───
-// Local Raspberry Pi / PC running Laravel backend
+// ─── Deployment Mode ───
+// Set to CLOUD_MODE for Supabase, or LOCAL_MODE for Raspberry Pi
+#define CLOUD_MODE      true    // true = Supabase cloud, false = local Laravel
+
+// ─── Cloud Configuration (Supabase) ───
+// Get these from your Supabase project settings
+#define SUPABASE_URL        "https://your-project.supabase.co"
+#define SUPABASE_ANON_KEY   "your-anon-key-here"
+#define SUPABASE_UNIT_ID    "your-unit-uuid-here"   // This ESP32's unit ID
+
+// ─── Local Server Configuration (Legacy) ───
+// Only used when CLOUD_MODE is false
 #define SERVER_HOST     "192.168.4.1"
 #define SERVER_PORT     8000
 #define SERVER_URL      "http://" SERVER_HOST ":" SERVER_PORT
-#define API_POST_READINGS  SERVER_URL "/api/readings"
-#define API_POST_ALERTS    SERVER_URL "/api/alerts"
+
+// ─── API Endpoints ───
+#if CLOUD_MODE
+    // Supabase REST API endpoints
+    #define API_POST_READINGS  SUPABASE_URL "/rest/v1/sensor_readings"
+    #define API_POST_ALERTS    SUPABASE_URL "/rest/v1/alerts"
+    #define API_POST_STATUS    SUPABASE_URL "/rest/v1/digester_status"
+#else
+    // Local Laravel API endpoints
+    #define API_POST_READINGS  SERVER_URL "/api/readings"
+    #define API_POST_ALERTS    SERVER_URL "/api/alerts"
+#endif
 
 // ─── Sensor Pin Assignments ───
 #define TEMP_SENSOR_PIN     4     // DS18B20 (OneWire bus)

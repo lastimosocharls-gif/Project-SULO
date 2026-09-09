@@ -22,6 +22,11 @@ void wifi_init() {
         Serial.println();
         Serial.print("[WIFI] Connected! IP: ");
         Serial.println(WiFi.localIP());
+        #if CLOUD_MODE
+            Serial.println("[WIFI] Mode: CLOUD (Supabase)");
+        #else
+            Serial.println("[WIFI] Mode: LOCAL (Raspberry Pi)");
+        #endif
     } else {
         Serial.println();
         Serial.println("[WIFI] Connection failed — will retry");
@@ -32,16 +37,33 @@ bool wifi_is_connected() {
     return WiFi.status() == WL_CONNECTED;
 }
 
+// Helper: Add Supabase auth headers to request
+static void addSupabaseHeaders(HTTPClient &http) {
+    #if CLOUD_MODE
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("apikey", SUPABASE_ANON_KEY);
+        http.addHeader("Authorization", "Bearer " + String(SUPABASE_ANON_KEY));
+        // Prefer minimal response to reduce bandwidth
+        http.addHeader("Prefer", "return=minimal");
+    #else
+        http.addHeader("Content-Type", "application/json");
+    #endif
+}
+
 bool wifi_post_readings(const SensorData &data) {
     if (!wifi_is_connected()) return false;
 
     HTTPClient http;
     http.begin(API_POST_READINGS);
-    http.addHeader("Content-Type", "application/json");
+    addSupabaseHeaders(http);
     http.setTimeout(5000);
 
     // Build JSON payload (ArduinoJson v7 API)
     JsonDocument doc;
+    #if CLOUD_MODE
+        // Supabase schema: include unit_id
+        doc["unit_id"]     = SUPABASE_UNIT_ID;
+    #endif
     doc["temperature"] = data.temperature;
     doc["ph"]          = data.ph;
     doc["gas_level"]   = data.gasLevel;
@@ -73,11 +95,15 @@ bool wifi_post_alert(const SensorData &data, const char *alertType,
 
     HTTPClient http;
     http.begin(API_POST_ALERTS);
-    http.addHeader("Content-Type", "application/json");
+    addSupabaseHeaders(http);
     http.setTimeout(5000);
 
     // Build JSON payload (ArduinoJson v7 API)
     JsonDocument doc;
+    #if CLOUD_MODE
+        // Supabase schema: include unit_id
+        doc["unit_id"]     = SUPABASE_UNIT_ID;
+    #endif
     doc["temperature"] = data.temperature;
     doc["ph"]          = data.ph;
     doc["gas_level"]   = data.gasLevel;

@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SULO Admin — Biogas Digester Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e4e4e7;
+            --muted: #71717a;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --teal: #14b8a6;
+            --purple: #a855f7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Login Page ─── */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-card h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+        }
+        .login-card h1 span { color: var(--teal); }
+        .login-card p {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            border-color: var(--teal);
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--teal);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .error-msg {
+            color: var(--red);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 12px;
+            display: none;
+        }
+
+        /* ─── Dashboard Layout ─── */
+        .dashboard-container { display: none; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 1.4rem; font-weight: 700; }
+        .header h1 span { color: var(--teal); }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .unit-selector {
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+        }
+        .unit-selector:focus { border-color: var(--teal); }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .status-normal  { background: rgba(34,197,94,0.15); color: var(--green); }
+        .status-warning { background: rgba(234,179,8,0.15); color: var(--yellow); }
+        .status-critical{ background: rgba(239,68,68,0.15); color: var(--red); }
+        .conn-tag {
+            font-size: 0.75rem;
+            color: var(--muted);
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .btn-logout {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* ─── Stats Bar ─── */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 16px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .stat-value.green { color: var(--green); }
+        .stat-value.yellow { color: var(--yellow); }
+        .stat-value.red { color: var(--red); }
+        .stat-value.blue { color: var(--blue); }
+
+        /* ─── Sensor Grid ─── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .card-unit {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--muted);
+            margin-left: 4px;
+        }
+        .card-range {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+        .valve-open { color: var(--red); }
+        .valve-closed { color: var(--green); }
+
+        /* ─── Charts Section ─── */
+        .charts-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 16px;
+        }
+        .chart-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .chart-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        /* ─── Alerts Table ─── */
+        .alerts-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .alerts-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .alerts-header h3 {
+            font-size: 0.9rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-ack-all {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-ack-all:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: var(--muted); font-weight: 500; }
+        tr:last-child td { border-bottom: none; }
+        .severity-critical { color: var(--red); font-weight: 600; }
+        .severity-warning { color: var(--yellow); font-weight: 600; }
+        .btn-ack {
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid var(--green);
+            border-radius: 6px;
+            color: var(--green);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-ack:hover {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-ack:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ─── Unit Overview Grid ─── */
+        .units-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .units-section h3 {
+            font-size: 0.9rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+        .units-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .unit-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .unit-card:hover {
+            border-color: var(--teal);
+        }
+        .unit-card.active {
+            border-color: var(--teal);
+            background: rgba(20,184,166,0.05);
+        }
+        .unit-card h4 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+        .unit-card .unit-location {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        .unit-card .unit-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .unit-stat {
+            font-size: 0.8rem;
+        }
+        .unit-stat-label {
+            color: var(--muted);
+        }
+        .unit-stat-value {
+            font-weight: 600;
+        }
+
+        /* ─── Footer ─── */
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr 1fr; padding: 0 16px 16px; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .stats-bar { flex-wrap: wrap; padding: 12px 16px; }
+            .stat-card { min-width: 120px; }
+            .card-value { font-size: 1.5rem; }
+            .header { flex-wrap: wrap; gap: 12px; }
+            .header-actions { width: 100%; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ LOGIN PAGE ═══ -->
+    <div class="login-container" id="loginPage">
+        <div class="login-card">
+            <h1><span>SULO</span> Admin</h1>
+            <p>Biogas Digester Monitoring System</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="admin@sulo.local" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">Sign In</button>
+                <div class="error-msg" id="loginError"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="dashboard-container" id="dashboardPage">
+
+        <!-- Header -->
+        <div class="header">
+            <h1><span>SULO</span> — Admin Dashboard</h1>
+            <div class="header-actions">
+                <select class="unit-selector" id="unitSelector">
+                    <option value="all">All Units</option>
+                </select>
+                <span class="conn-tag" id="connStatus">● Connecting...</span>
+                <div class="status-badge status-normal" id="overallStatus">Normal</div>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Total Units</div>
+                <div class="stat-value blue" id="totalUnits">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Alerts</div>
+                <div class="stat-value yellow" id="activeAlerts">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Critical</div>
+                <div class="stat-value red" id="criticalCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Readings Today</div>
+                <div class="stat-value green" id="readingsToday">0</div>
+            </div>
+        </div>
+
+        <!-- Unit Overview Cards -->
+        <div class="units-section">
+            <h3>📦 Digester Units</h3>
+            <div class="units-grid" id="unitsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Live Sensor Cards (selected unit) -->
+        <div class="dashboard" id="sensorCards" style="display:none;">
+            <div class="card">
+                <div class="card-label">🌡️ Temperature</div>
+                <div class="card-value" id="tempValue">--<span class="card-unit">°C</span></div>
+                <div class="card-range">Safe: 25–55 °C</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🧪 pH Level</div>
+                <div class="card-value" id="phValue">--</div>
+                <div class="card-range">Safe: 6.0–8.5</div>
+            </div>
+            <div class="card">
+                <div class="card-label">💨 Gas Level</div>
+                <div class="card-value" id="gasValue">--<span class="card-unit">ppm</span></div>
+                <div class="card-range">Max safe: 5000 ppm</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🔴 Pressure</div>
+                <div class="card-value" id="pressValue">--<span class="card-unit">kPa</span></div>
+                <div class="card-range">Max: 200 kPa (valve opens)</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🌊 Flow Rate</div>
+                <div class="card-value" id="flowValue">--<span class="card-unit">L/min</span></div>
+                <div class="card-range">Methane output</div>
+            </div>
+            <div class="card">
+                <div class="card-label">⚙️ Solenoid Valve</div>
+                <div class="card-value valve-closed" id="valveStatus">CLOSED</div>
+                <div class="card-range" id="valveLabel">Normal operation</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-section" id="chartsSection" style="display:none;">
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Temperature & Pressure (24h)</h3>
+                    <div class="chart-container">
+                        <canvas id="tempPressChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>pH & Gas Level (24h)</h3>
+                    <div class="chart-container">
+                        <canvas id="phGasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="alerts-section">
+            <div class="alerts-card">
+                <div class="alerts-header">
+                    <h3>⚠️ Recent Alerts</h3>
+                    <button class="btn-ack-all" id="ackAllBtn">Acknowledge All</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Unit</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertsTable">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--muted); padding: 24px;">
+                                No alerts recorded
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            SULO — Smart Utility for Local Organic Waste | Cloud Dashboard | Multi-Unit Monitoring
+        </div>
+    </div>
+
+    <!-- ═══ SUPABASE CLIENT ═══ -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ─── Configuration ───
+        // Replace with your Supabase project credentials
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key-here';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ─── State ───
+        let currentUser = null;
+        let selectedUnitId = 'all';
+        let units = [];
+        let refreshInterval = null;
+
+        // ─── DOM Elements ───
+        const loginPage = document.getElementById('loginPage');
+        const dashboardPage = document.getElementById('dashboardPage');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const unitSelector = document.getElementById('unitSelector');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const ackAllBtn = document.getElementById('ackAllBtn');
+
+        // ─── Auth: Login ───
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+
+            loginBtn.disabled = true;
+            loginError.style.display = 'none';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                currentUser = data.user;
+                showDashboard();
+            } catch (err) {
+                loginError.textContent = err.message || 'Login failed';
+                loginError.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+            }
+        });
+
+        // ─── Auth: Logout ───
+        logoutBtn.addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            currentUser = null;
+            if (refreshInterval) clearInterval(refreshInterval);
+            loginPage.style.display = 'flex';
+            dashboardPage.style.display = 'none';
+        });
+
+        // ─── Auth: Check Session ───
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showDashboard();
+            }
+        }
+
+        // ─── Show Dashboard ───
+        function showDashboard() {
+            loginPage.style.display = 'none';
+            dashboardPage.style.display = 'block';
+            loadUnits();
+            refreshAll();
+            refreshInterval = setInterval(refreshAll, 5000);
+
+            // Subscribe to real-time updates
+            subscribeToRealtime();
+        }
+
+        // ─── Load Units ───
+        async function loadUnits() {
+            const { data, error } = await supabase
+                .from('units')
+                .select('*')
+                .eq('is_active', true)
+                .order('name');
+
+            if (error) {
+                console.error('Failed to load units:', error);
+                return;
+            }
+
+            units = data;
+            document.getElementById('totalUnits').textContent = units.length;
+
+            // Populate unit selector
+            unitSelector.innerHTML = '<option value="all">All Units</option>';
+            units.forEach(unit => {
+                const opt = document.createElement('option');
+                opt.value = unit.unit_id;
+                opt.textContent = unit.name;
+                unitSelector.appendChild(opt);
+            });
+
+            // Render unit cards
+            renderUnitCards();
+        }
+
+        // ─── Render Unit Overview Cards ───
+        async function renderUnitCards() {
+            const grid = document.getElementById('unitsGrid');
+            grid.innerHTML = '';
+
+            for (const unit of units) {
+                // Get latest reading for this unit
+                const { data: latest } = await supabase
+                    .from('sensor_readings')
+                    .select('*')
+                    .eq('unit_id', unit.unit_id)
+                    .order('recorded_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                const status = latest ? getStatusLabel(latest.status) : 'No Data';
+                const statusClass = latest ? getStatusClass(latest.status) : '';
+
+                const card = document.createElement('div');
+                card.className = `unit-card ${selectedUnitId === unit.unit_id ? 'active' : ''}`;
+                card.onclick = () => selectUnit(unit.unit_id);
+                card.innerHTML = `
+                    <h4>${unit.name}</h4>
+                    <div class="unit-location">📍 ${unit.location || 'No location set'}</div>
+                    <div class="status-badge ${statusClass}" style="margin-bottom: 12px;">${status}</div>
+                    <div class="unit-stats">
+                        <div class="unit-stat">
+                            <div class="unit-stat-label">Temp</div>
+                            <div class="unit-stat-value">${latest ? latest.temperature + '°C' : '--'}</div>
+                        </div>
+                        <div class="unit-stat">
+                            <div class="unit-stat-label">pH</div>
+                            <div class="unit-stat-value">${latest ? latest.ph : '--'}</div>
+                        </div>
+                        <div class="unit-stat">
+                            <div class="unit-stat-label">Gas</div>
+                            <div class="unit-stat-value">${latest ? latest.gas_level + ' ppm' : '--'}</div>
+                        </div>
+                        <div class="unit-stat">
+                            <div class="unit-stat-label">Pressure</div>
+                            <div class="unit-stat-value">${latest ? latest.pressure + ' kPa' : '--'}</div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        // ─── Select Unit ───
+        function selectUnit(unitId) {
+            selectedUnitId = unitId;
+            unitSelector.value = unitId;
+
+            const sensorCards = document.getElementById('sensorCards');
+            const chartsSection = document.getElementById('chartsSection');
+
+            if (unitId === 'all') {
+                sensorCards.style.display = 'none';
+                chartsSection.style.display = 'none';
+            } else {
+                sensorCards.style.display = 'grid';
+                chartsSection.style.display = 'block';
+            }
+
+            renderUnitCards();
+            refreshAll();
+        }
+
+        // ─── Unit Selector Change ───
+        unitSelector.addEventListener('change', (e) => {
+            selectUnit(e.target.value);
+        });
+
+        // ─── Refresh All Data ───
+        async function refreshAll() {
+            await Promise.all([
+                loadUnits(),
+                fetchAlerts(),
+                fetchStats()
+            ]);
+
+            if (selectedUnitId !== 'all') {
+                await Promise.all([
+                    fetchLatestReading(),
+                    fetchHistory()
+                ]);
+            }
+        }
+
+        // ─── Fetch Latest Reading ───
+        async function fetchLatestReading() {
+            if (selectedUnitId === 'all') return;
+
+            const { data, error } = await supabase
+                .from('sensor_readings')
+                .select('*')
+                .eq('unit_id', selectedUnitId)
+                .order('recorded_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (error || !data) {
+                document.getElementById('connStatus').textContent = '● No data';
+                document.getElementById('connStatus').style.color = '#ef4444';
+                return;
+            }
+
+            document.getElementById('tempValue').innerHTML = `${parseFloat(data.temperature).toFixed(1)}<span class="card-unit">°C</span>`;
+            document.getElementById('phValue').textContent = parseFloat(data.ph).toFixed(2);
+            document.getElementById('gasValue').innerHTML = `${parseFloat(data.gas_level).toFixed(0)}<span class="card-unit">ppm</span>`;
+            document.getElementById('pressValue').innerHTML = `${parseFloat(data.pressure).toFixed(1)}<span class="card-unit">kPa</span>`;
+            document.getElementById('flowValue').innerHTML = `${parseFloat(data.flow_rate).toFixed(2)}<span class="card-unit">L/min</span>`;
+
+            // Valve status
+            const valveEl = document.getElementById('valveStatus');
+            const valveLabel = document.getElementById('valveLabel');
+            if (data.valve_open) {
+                valveEl.textContent = 'OPEN';
+                valveEl.className = 'card-value valve-open';
+                valveLabel.textContent = '⚠ Venting excess pressure';
+            } else {
+                valveEl.textContent = 'CLOSED';
+                valveEl.className = 'card-value valve-closed';
+                valveLabel.textContent = 'Normal operation';
+            }
+
+            // Status badge
+            const statusBadge = document.getElementById('overallStatus');
+            const statusMap = { 0: ['Normal', 'status-normal'], 1: ['Warning', 'status-warning'], 2: ['Critical', 'status-critical'] };
+            const [label, cls] = statusMap[data.status] || statusMap[0];
+            statusBadge.textContent = label;
+            statusBadge.className = `status-badge ${cls}`;
+
+            document.getElementById('connStatus').textContent = '● Connected (Cloud)';
+            document.getElementById('connStatus').style.color = '';
+        }
+
+        // ─── Fetch History for Charts ───
+        async function fetchHistory() {
+            if (selectedUnitId === 'all') return;
+
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+            const { data, error } = await supabase
+                .from('sensor_readings')
+                .select('temperature, ph, gas_level, pressure, recorded_at')
+                .eq('unit_id', selectedUnitId)
+                .gte('recorded_at', twentyFourHoursAgo)
+                .order('recorded_at', { ascending: true });
+
+            if (error || !data || !data.length) return;
+
+            // Group by hour for chart
+            const hourlyData = {};
+            data.forEach(r => {
+                const hour = new Date(r.recorded_at).getHours().toString().padStart(2, '0') + ':00';
+                if (!hourlyData[hour]) hourlyData[hour] = { temp: [], ph: [], gas: [], press: [] };
+                hourlyData[hour].temp.push(parseFloat(r.temperature));
+                hourlyData[hour].ph.push(parseFloat(r.ph));
+                hourlyData[hour].gas.push(parseFloat(r.gas_level));
+                hourlyData[hour].press.push(parseFloat(r.pressure));
+            });
+
+            const labels = Object.keys(hourlyData);
+            const avgTemp = labels.map(h => (hourlyData[h].temp.reduce((a,b) => a+b, 0) / hourlyData[h].temp.length).toFixed(1));
+            const avgPh = labels.map(h => (hourlyData[h].ph.reduce((a,b) => a+b, 0) / hourlyData[h].ph.length).toFixed(2));
+            const avgGas = labels.map(h => (hourlyData[h].gas.reduce((a,b) => a+b, 0) / hourlyData[h].gas.length).toFixed(0));
+            const avgPress = labels.map(h => (hourlyData[h].press.reduce((a,b) => a+b, 0) / hourlyData[h].press.length).toFixed(1));
+
+            // Update charts
+            if (window.tempPressChartInstance) {
+                tempPressChartInstance.data.labels = labels;
+                tempPressChartInstance.data.datasets[0].data = avgTemp;
+                tempPressChartInstance.data.datasets[1].data = avgPress;
+                tempPressChartChart.update('none');
+            }
+
+            if (window.phGasChartInstance) {
+                phGasChartInstance.data.labels = labels;
+                phGasChartInstance.data.datasets[0].data = avgPh;
+                phGasChartInstance.data.datasets[1].data = avgGas;
+                phGasChartInstance.update('none');
+            }
+        }
+
+        // ─── Fetch Alerts ───
+        async function fetchAlerts() {
+            let query = supabase
+                .from('alerts')
+                .select('*, units(name)')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (selectedUnitId !== 'all') {
+                query = query.eq('unit_id', selectedUnitId);
+            }
+
+            const { data: alerts, error } = await query;
+
+            if (error) {
+                console.error('Failed to fetch alerts:', error);
+                return;
+            }
+
+            const tbody = document.getElementById('alertsTable');
+            if (!alerts || !alerts.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 24px;">No alerts recorded</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = alerts.map(a => {
+                const time = new Date(a.created_at).toLocaleString();
+                const unitName = a.units ? a.units.name : 'Unknown';
+                const sevClass = a.severity === 'critical' ? 'severity-critical' : 'severity-warning';
+                const ack = a.acknowledged
+                    ? '<span style="color: var(--green);">✅ Acknowledged</span>'
+                    : `<button class="btn-ack" onclick="acknowledgeAlert(${a.alert_id})">Acknowledge</button>`;
+                return `<tr>
+                    <td>${time}</td>
+                    <td>${unitName}</td>
+                    <td>${a.alert_type}</td>
+                    <td class="${sevClass}">${a.severity.toUpperCase()}</td>
+                    <td>${a.message}</td>
+                    <td>${ack}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ─── Fetch Stats ───
+        async function fetchStats() {
+            // Active alerts count
+            const { count: alertCount } = await supabase
+                .from('alerts')
+                .select('*', { count: 'exact', head: true })
+                .eq('acknowledged', false);
+
+            document.getElementById('activeAlerts').textContent = alertCount || 0;
+
+            // Critical count
+            const { count: criticalCount } = await supabase
+                .from('alerts')
+                .select('*', { count: 'exact', head: true })
+                .eq('severity', 'critical')
+                .eq('acknowledged', false);
+
+            document.getElementById('criticalCount').textContent = criticalCount || 0;
+
+            // Readings today
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const { count: readingsCount } = await supabase
+                .from('sensor_readings')
+                .select('*', { count: 'exact', head: true })
+                .gte('recorded_at', todayStart.toISOString());
+
+            document.getElementById('readingsToday').textContent = readingsCount || 0;
+        }
+
+        // ─── Acknowledge Alert ───
+        async function acknowledgeAlert(alertId) {
+            const { error } = await supabase
+                .from('alerts')
+                .update({ acknowledged: true, acknowledged_at: new Date().toISOString() })
+                .eq('alert_id', alertId);
+
+            if (!error) fetchAlerts();
+        }
+
+        // ─── Acknowledge All ───
+        ackAllBtn.addEventListener('click', async () => {
+            await supabase
+                .from('alerts')
+                .update({ acknowledged: true, acknowledged_at: new Date().toISOString() })
+                .eq('acknowledged', false);
+
+            fetchAlerts();
+        });
+
+        // ─── Real-time Subscriptions ───
+        function subscribeToRealtime() {
+            // Subscribe to new sensor readings
+            supabase
+                .channel('sensor_readings_changes')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_readings' }, (payload) => {
+                    console.log('New reading:', payload.new);
+                    if (selectedUnitId === 'all' || payload.new.unit_id === selectedUnitId) {
+                        fetchLatestReading();
+                    }
+                    renderUnitCards();
+                })
+                .subscribe();
+
+            // Subscribe to new alerts
+            supabase
+                .channel('alerts_changes')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alerts' }, (payload) => {
+                    console.log('New alert:', payload.new);
+                    fetchAlerts();
+                    fetchStats();
+                })
+                .subscribe();
+        }
+
+        // ─── Helpers ───
+        function getStatusLabel(status) {
+            return { 0: 'Normal', 1: 'Warning', 2: 'Critical' }[status] || 'Unknown';
+        }
+
+        function getStatusClass(status) {
+            return { 0: 'status-normal', 1: 'status-warning', 2: 'status-critical' }[status] || '';
+        }
+
+        // ─── Chart Instances ───
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { labels: { color: '#71717a', font: { size: 11 } } } },
+            scales: {
+                x: { ticks: { color: '#71717a', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#2a2d3a' } },
+                y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: '#2a2d3a' } }
+            }
+        };
+
+        window.tempPressChartInstance = new Chart(document.getElementById('tempPressChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Temperature (°C)', borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3, fill: true, data: [] },
+                    { label: 'Pressure (kPa)', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true, yAxisID: 'y1', data: [] }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    ...chartOptions.scales,
+                    y: { ...chartOptions.scales.y, position: 'left', title: { display: true, text: '°C', color: '#71717a' } },
+                    y1: { ...chartOptions.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'kPa', color: '#71717a' } }
+                }
+            }
+        });
+
+        window.phGasChartInstance = new Chart(document.getElementById('phGasChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'pH', borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, fill: true, data: [] },
+                    { label: 'Gas (ppm)', borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.1)', tension: 0.3, fill: true, yAxisID: 'y1', data: [] }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    ...chartOptions.scales,
+                    y: { ...chartOptions.scales.y, position: 'left', title: { display: true, text: 'pH', color: '#71717a' } },
+                    y1: { ...chartOptions.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'ppm', color: '#71717a' } }
+                }
+            }
+        });
+
+        // ─── Init ───
+        checkSession();
+    </script>
+</body>
+</html>

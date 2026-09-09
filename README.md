@@ -1,29 +1,36 @@
 # Project-SULO
 
-**Smart Utility for Local Organic Waste** — A fully local, offline-capable biogas digester monitoring system.
+**Smart Utility for Local Organic Waste** — A cloud-based, multi-unit biogas digester monitoring system.
 
 ## Overview
 
-SULO monitors a mini biogas digester in real-time using ESP32-connected sensors. All data is stored locally on a Raspberry Pi via PostgreSQL. A web dashboard is accessible on the local WiFi network — **no internet required**.
+SULO monitors multiple biogas digesters in real-time using ESP32-connected sensors. All data is stored in the cloud via Supabase (PostgreSQL). An admin dashboard is accessible from anywhere with internet — **no Raspberry Pi needed**.
 
 ## Architecture
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                    Local WiFi Network (LAN)                │
-│                     No Internet Needed                     │
-│                                                            │
-│  ┌──────────┐   HTTP POST   ┌──────────────────────────┐  │
-│  │  ESP32   │ ───────────→  │  Raspberry Pi / Local PC  │  │
-│  │  (Edge)  │               │                            │  │
-│  └──────────┘               │  Laravel API               │  │
-│      ↑                      │  PostgreSQL (local)        │  │
-│  Sensors                    │  Web Dashboard             │  │
-│  Display                    └──────────────────────────┘  │
-│  Solenoid Valve                      ↑                     │
-│  IR Remote                    Any LAN device               │
-│                              (phone/laptop/PC)             │
-└────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Cloud (Supabase)                         │
+│                                                                 │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐   │
+│  │  PostgreSQL   │   │   Auth       │   │  Realtime        │   │
+│  │  Database     │   │   Service    │   │  Subscriptions   │   │
+│  └──────────────┘   └──────────────┘   └──────────────────┘   │
+│           ↑                  ↑                    ↑              │
+│           └──────────────────┴────────────────────┘              │
+│                              ↑                                   │
+│                    ┌─────────┴─────────┐                        │
+│                    │  Admin Dashboard   │                        │
+│                    │  (Web App)         │                        │
+│                    └─────────┬─────────┘                        │
+└──────────────────────────────┼──────────────────────────────────┘
+                               │ Internet
+              ┌────────────────┼────────────────┐
+              │                │                │
+     ┌────────┴────────┐ ┌────┴──────┐ ┌───────┴───────┐
+     │  ESP32 Unit A   │ │ ESP32 Unit B│ │ ESP32 Unit C  │
+     │  (Karenderya)   │ │ (Kitchen)  │ │ (Bakery)      │
+     └─────────────────┘ └───────────┘ └───────────────┘
 ```
 
 ## How It Works
@@ -69,38 +76,32 @@ Project-SULO/
 
 ## Quick Start
 
-### 1. Raspberry Pi Setup (Server)
+### 1. Set Up Supabase (Cloud Database)
 
-```bash
-# Clone to Pi
-scp -r Project-SULO/ pi@raspberrypi:/home/pi/
-
-# SSH into Pi
-ssh pi@raspberrypi
-
-# Run setup script (installs PostgreSQL, PHP, Nginx, Laravel)
-cd Project-SULO
-sudo chmod +x scripts/setup-rpi.sh
-sudo ./scripts/setup-rpi.sh
-```
-
-Dashboard will be available at: **http://192.168.4.1:8000**
+1. Go to https://supabase.com and create a free account
+2. Create a new project
+3. Go to **SQL Editor** and run the contents of `database/supabase-schema.sql`
+4. Copy your **Project URL** and **anon key** from Settings → API
 
 ### 2. ESP32 Firmware
 
 1. Install [PlatformIO](https://platformio.org/) in VS Code
 2. Open `firmware/` folder
 3. Edit `config.h`:
-   - Set `WIFI_SSID` and `WIFI_PASSWORD` to match your local WiFi
-   - Set `SERVER_HOST` to the Raspberry Pi's IP address
+   - Set `WIFI_SSID` and `WIFI_PASSWORD`
+   - Set `CLOUD_MODE = true`
+   - Set `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+   - Set `SUPABASE_UNIT_ID` (get from Table Editor → units)
 4. Flash to ESP32 via USB
 
-### 3. Local Network
+### 3. Admin Dashboard
 
-- Connect the Raspberry Pi to a WiFi router (or use its built-in WiFi as an AP)
-- Connect the ESP32 to the same network
-- The ESP32 will automatically start sending data to the Pi
-- Open the dashboard on any device connected to the same network
+1. Edit `admin/index.html` with your Supabase credentials
+2. Open in browser or deploy to Vercel/Netlify
+3. Login with your Supabase auth credentials
+4. View live data from all your digester units!
+
+**No Raspberry Pi needed!**
 
 ## Hardware Components
 
@@ -116,7 +117,7 @@ Dashboard will be available at: **http://192.168.4.1:8000**
 | IR Remote | VS1838B + remote | Screen navigation |
 | Relay | 5V 1-channel | Solenoid valve control |
 | Solenoid Valve | 12V NC | Overpressure relief |
-| Server | Raspberry Pi 4/5 | Laravel + PostgreSQL host |
+| ~~Server~~ | ~~Raspberry Pi~~ | ~~No longer needed (cloud DB)~~ |
 
 ## Safe Thresholds
 
@@ -134,10 +135,11 @@ Dashboard will be available at: **http://192.168.4.1:8000**
 ## Tech Stack
 
 - **Firmware:** Arduino/PlatformIO (C++), ESP32
-- **Backend:** Laravel 11 (PHP), REST API
-- **Database:** PostgreSQL (local, self-hosted)
-- **Dashboard:** Blade + Chart.js (vanilla JS, no build step)
-- **Network:** Local WiFi only (no cloud, no internet)
+- **Database:** Supabase (PostgreSQL, cloud-hosted)
+- **Auth:** Supabase Auth (built-in)
+- **Realtime:** Supabase Realtime (live updates)
+- **Dashboard:** Vanilla JS + Chart.js (static HTML, no build step)
+- **Hosting:** Vercel/Netlify (free tier) or local
 
 ## License
 
