@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SULO — ESP32 Simulator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            background: #0a0e14;
+            color: #abb2bf;
+            padding: 20px;
+        }
+        h1 { color: #14b8a6; margin-bottom: 20px; font-size: 1.5rem; }
+        h1 span { color: #71717a; font-weight: normal; font-size: 0.9rem; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .panel {
+            background: #1a1d27;
+            border: 1px solid #2a2d3a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 12px 16px;
+            background: #22252f;
+            border-bottom: 1px solid #2a2d3a;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .dot-green { background: #22c55e; }
+        .dot-yellow { background: #eab308; }
+        .dot-red { background: #ef4444; }
+        .log {
+            padding: 16px;
+            height: 500px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+        .log::-webkit-scrollbar { width: 6px; }
+        .log::-webkit-scrollbar-thumb { background: #3a3d4a; border-radius: 3px; }
+        .log-entry { margin-bottom: 4px; }
+        .log-time { color: #71717a; }
+        .log-info { color: #3b82f6; }
+        .log-success { color: #22c55e; }
+        .log-warning { color: #eab308; }
+        .log-error { color: #ef4444; }
+        .log-data { color: #a855f7; }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+        .sensor-box {
+            background: #0f1117;
+            border: 1px solid #2a2d3a;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .sensor-box .label { font-size: 0.7rem; color: #71717a; text-transform: uppercase; margin-bottom: 4px; }
+        .sensor-box .value { font-size: 1.3rem; font-weight: 700; }
+        .sensor-box .unit { font-size: 0.7rem; color: #71717a; }
+        .sensor-box.temp .value { color: #ef4444; }
+        .sensor-box.ph .value { color: #22c55e; }
+        .sensor-box.gas .value { color: #eab308; }
+        .sensor-box.press .value { color: #3b82f6; }
+        .sensor-box.flow .value { color: #a855f7; }
+        .sensor-box.status .value { color: #14b8a6; }
+
+        .controls {
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid #2a2d3a;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.8; }
+        .btn-green { background: #22c55e; color: #000; }
+        .btn-red { background: #ef4444; color: #fff; }
+        .btn-blue { background: #3b82f6; color: #fff; }
+        .btn-purple { background: #a855f7; color: #fff; }
+
+        .code-panel {
+            grid-column: 1 / -1;
+        }
+        .code {
+            padding: 16px;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre;
+        }
+        .code .keyword { color: #c678dd; }
+        .code .string { color: #98c379; }
+        .code .number { color: #d19a66; }
+        .code .comment { color: #5c6370; font-style: italic; }
+        .code .define { color: #e06c75; }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .sensor-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<h1>SULO — ESP32 Simulator <span>| Simulates firmware sending data to cloud</span></h1>
+
+<div class="container">
+    <!-- Serial Monitor -->
+    <div class="panel">
+        <div class="panel-header">
+            <div><span class="dot dot-green"></span>Serial Monitor</div>
+            <span id="postCount">0 posts</span>
+        </div>
+        <div class="log" id="serialLog"></div>
+        <div class="controls">
+            <button class="btn btn-green" onclick="startSim()">▶ Start</button>
+            <button class="btn btn-red" onclick="stopSim()">⏹ Stop</button>
+            <button class="btn btn-purple" onclick="clearLog()">🗑 Clear</button>
+        </div>
+    </div>
+
+    <!-- Live Sensors -->
+    <div class="panel">
+        <div class="panel-header">
+            <div><span class="dot dot-yellow"></span>Live Sensor Data</div>
+            <span id="unitLabel">Unit A — Karenderya</span>
+        </div>
+        <div class="sensor-grid">
+            <div class="sensor-box temp">
+                <div class="label">Temperature</div>
+                <div class="value" id="sTemp">--</div>
+                <div class="unit">°C</div>
+            </div>
+            <div class="sensor-box ph">
+                <div class="label">pH Level</div>
+                <div class="value" id="sPh">--</div>
+                <div class="unit">pH</div>
+            </div>
+            <div class="sensor-box gas">
+                <div class="label">Gas Level</div>
+                <div class="value" id="sGas">--</div>
+                <div class="unit">ppm</div>
+            </div>
+            <div class="sensor-box press">
+                <div class="label">Pressure</div>
+                <div class="value" id="sPress">--</div>
+                <div class="unit">kPa</div>
+            </div>
+            <div class="sensor-box flow">
+                <div class="label">Flow Rate</div>
+                <div class="value" id="sFlow">--</div>
+                <div class="unit">L/min</div>
+            </div>
+            <div class="sensor-box status">
+                <div class="label">Status</div>
+                <div class="value" id="sStatus">IDLE</div>
+                <div class="unit">valve: closed</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-blue" onclick="simulateAlert()">⚠ Simulate Alert</button>
+            <button class="btn btn-purple" onclick="simulateCritical()">🚨 Simulate Critical</button>
+        </div>
+    </div>
+
+    <!-- Simulated Firmware Code -->
+    <div class="panel code-panel">
+        <div class="panel-header">
+            <div><span class="dot dot-red"></span>firmware/config.h — Cloud Mode</div>
+        </div>
+        <div class="code"><span class="comment">// ═══ SULO ESP32 Firmware Config ═══</span>
+<span class="comment">// Set CLOUD_MODE = true to send data to Supabase</span>
+
+<span class="define">#define</span> <span class="keyword">CLOUD_MODE</span>      <span class="number">true</span>
+
+<span class="comment">// WiFi Configuration</span>
+<span class="define">#define</span> <span class="keyword">WIFI_SSID</span>       <span class="string">"YOUR_WIFI_SSID"</span>
+<span class="define">#define</span> <span class="keyword">WIFI_PASSWORD</span>   <span class="string">"YOUR_WIFI_PASSWORD"</span>
+
+<span class="comment">// Supabase Cloud Configuration</span>
+<span class="define">#define</span> <span class="keyword">SUPABASE_URL</span>        <span class="string">"https://xyzcompany.supabase.co"</span>
+<span class="define">#define</span> <span class="keyword">SUPABASE_ANON_KEY</span>   <span class="string">"eyJhbGciOiJIUzI1NiIs..."</span>
+<span class="define">#define</span> <span class="keyword">SUPABASE_UNIT_ID</span>    <span class="string">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>
+
+<span class="comment">// Sensor Pin Assignments</span>
+<span class="define">#define</span> <span class="keyword">TEMP_SENSOR_PIN</span>     <span class="number">4</span>     <span class="comment">// DS18B20</span>
+<span class="define">#define</span> <span class="keyword">PH_SENSOR_PIN</span>       <span class="number">34</span>    <span class="comment">// pH analog</span>
+<span class="define">#define</span> <span class="keyword">GAS_SENSOR_PIN</span>      <span class="number">35</span>    <span class="comment">// MQ-4/MQ-135</span>
+<span class="define">#define</span> <span class="keyword">PRESSURE_SENSOR_SCL</span> <span class="number">22</span>    <span class="comment">// BMP280 I2C</span>
+<span class="define">#define</span> <span class="keyword">PRESSURE_SENSOR_SDA</span> <span class="number">21</span>    <span class="comment">// BMP280 I2C</span>
+<span class="define">#define</span> <span class="keyword">FLOW_SENSOR_PIN</span>     <span class="number">25</span>    <span class="comment">// YF-S401</span>
+
+<span class="comment">// Timing</span>
+<span class="define">#define</span> <span class="keyword">SENSOR_POLL_INTERVAL</span>    <span class="number">10000</span>   <span class="comment">// 10 seconds</span>
+<span class="define">#define</span> <span class="keyword">SERVER_POST_INTERVAL</span>    <span class="number">15000</span>   <span class="comment">// 15 seconds</span>
+
+<span class="comment">// Safe Thresholds</span>
+<span class="define">#define</span> <span class="keyword">TEMP_MIN_C</span>          <span class="number">25.0f</span>
+<span class="define">#define</span> <span class="keyword">TEMP_MAX_C</span>          <span class="number">55.0f</span>
+<span class="define">#define</span> <span class="keyword">PH_MIN</span>              <span class="number">6.0f</span>
+<span class="define">#define</span> <span class="keyword">PH_MAX</span>              <span class="number">8.5f</span>
+<span class="define">#define</span> <span class="keyword">GAS_MAX_PPM</span>         <span class="number">5000.0f</span>
+<span class="define">#define</span> <span class="keyword">PRESSURE_MAX_KPA</span>    <span class="number">200.0f</span></div>
+    </div>
+</div>
+
+<script>
+    let simRunning = false;
+    let simInterval = null;
+    let postCount = 0;
+    const log = document.getElementById('serialLog');
+
+    const units = [
+        { id: 'unit-a', name: 'Karenderya Unit A', baseTemp: 35, basePh: 7.2, baseGas: 2500, basePress: 105, baseFlow: 2.5 },
+        { id: 'unit-b', name: 'Karenderya Unit B', baseTemp: 32, basePh: 7.0, baseGas: 1800, basePress: 98, baseFlow: 1.8 },
+        { id: 'unit-c', name: 'Bakery Digester', baseTemp: 38, basePh: 6.8, baseGas: 3200, basePress: 115, baseFlow: 3.1 }
+    ];
+
+    function time() {
+        return new Date().toLocaleTimeString();
+    }
+
+    function addLog(msg, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-time">[${time()}]</span> <span class="log-${type}">${msg}</span>`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function generateReading(unit) {
+        const temp = unit.baseTemp + (Math.random() - 0.5) * 6;
+        const ph = unit.basePh + (Math.random() - 0.5) * 0.8;
+        const gas = unit.baseGas + (Math.random() - 0.5) * 800;
+        const press = unit.basePress + (Math.random() - 0.5) * 30;
+        const flow = Math.max(0, unit.baseFlow + (Math.random() - 0.5) * 1.5);
+        let status = 0;
+        let valveOpen = false;
+        if (press > 200 || gas > 5000 || temp > 55 || temp < 25 || ph < 6 || ph > 8.5) { status = 2; valveOpen = press > 200; }
+        else if (press > 180 || gas > 4500 || temp > 50 || temp < 30 || ph < 6.3 || ph > 8.2) { status = 1; }
+        return { temperature: +temp.toFixed(2), ph: +ph.toFixed(2), gas_level: +gas.toFixed(2), pressure: +press.toFixed(2), flow_rate: +flow.toFixed(4), status, valve_open: valveOpen };
+    }
+
+    function updateSensors(reading, unitName) {
+        document.getElementById('sTemp').textContent = reading.temperature;
+        document.getElementById('sPh').textContent = reading.ph;
+        document.getElementById('sGas').textContent = reading.gas_level;
+        document.getElementById('sPress').textContent = reading.pressure;
+        document.getElementById('sFlow').textContent = reading.flow_rate;
+        document.getElementById('sStatus').textContent = ['NORMAL', 'WARNING', 'CRITICAL'][reading.status];
+        document.getElementById('sStatus').style.color = ['#14b8a6', '#eab308', '#ef4444'][reading.status];
+        document.getElementById('unitLabel').textContent = unitName;
+    }
+
+    function simulatePost(unit) {
+        const reading = generateReading(unit);
+        const statusLabels = ['Normal', '⚠ Warning', '🚨 CRITICAL'];
+        const statusTypes = ['success', 'warning', 'error'];
+
+        addLog(`[WIFI] POST ${SUPABASE_URL}/rest/v1/sensor_readings`, 'info');
+        addLog(`[HTTP] Sending JSON:`, 'data');
+        addLog(`  { "unit_id": "${unit.id}", "temperature": ${reading.temperature}, "ph": ${reading.ph}, "gas_level": ${reading.gas_level}, "pressure": ${reading.pressure}, "flow_rate": ${reading.flow_rate}, "status": ${reading.status}, "valve_open": ${reading.valve_open} }`, 'data');
+        addLog(`[HTTP] Response: 201 Created`, 'success');
+        addLog(`[SENSOR] Status: ${statusLabels[reading.status]} | Valve: ${reading.valve_open ? 'OPEN' : 'Closed'}`, statusTypes[reading.status]);
+
+        postCount++;
+        document.getElementById('postCount').textContent = `${postCount} posts`;
+        updateSensors(reading, unit.name);
+    }
+
+    function simulateAlert() {
+        const unit = units[Math.floor(Math.random() * units.length)];
+        addLog(`[ALERT] ⚠ Warning: Threshold approaching on ${unit.name}`, 'warning');
+        addLog(`[HTTP] POST /rest/v1/alerts -> 201`, 'success');
+    }
+
+    function simulateCritical() {
+        const unit = units[Math.floor(Math.random() * units.length)];
+        addLog(`[ALERT] 🚨 CRITICAL: Overpressure detected on ${unit.name}!`, 'error');
+        addLog(`[FAILSAFE] Opening solenoid valve immediately!`, 'error');
+        addLog(`[HTTP] POST /rest/v1/alerts -> 201`, 'success');
+        const r = generateReading(unit);
+        r.status = 2;
+        r.valve_open = true;
+        r.pressure = 210 + Math.random() * 20;
+        updateSensors(r, unit.name);
+    }
+
+    function startSim() {
+        if (simRunning) return;
+        simRunning = true;
+        addLog('[BOOT] ESP32 SULO Firmware v2.0 (Cloud Mode)', 'info');
+        addLog('[BOOT] Initializing sensors...', 'info');
+        addLog('[SENSOR] DS18B20 OK | pH OK | MQ-4 OK | BMP280 OK | YF-S401 OK', 'success');
+        addLog(`[WIFI] Connecting to ${document.querySelector('.code').textContent.match(/"([^"]+)"/)?.[1] || 'WIFI_SSID'}...`, 'info');
+        setTimeout(() => {
+            addLog('[WIFI] Connected! IP: 192.168.1.105', 'success');
+            addLog('[CLOUD] Mode: CLOUD (Supabase)', 'info');
+            addLog('[CLOUD] Unit ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'info');
+            addLog('[SYSTEM] Starting sensor polling loop (10s interval)', 'info');
+            addLog('─'.repeat(50), 'info');
+
+            simInterval = setInterval(() => {
+                const unit = units[Math.floor(Math.random() * units.length)];
+                simulatePost(unit);
+            }, 3000);
+        }, 1500);
+    }
+
+    function stopSim() {
+        if (!simRunning) return;
+        simRunning = false;
+        clearInterval(simInterval);
+        addLog('[SYSTEM] Simulation paused', 'warning');
+    }
+
+    function clearLog() {
+        log.innerHTML = '';
+        postCount = 0;
+        document.getElementById('postCount').textContent = '0 posts';
+    }
+</script>
+
+</body>
+</html>

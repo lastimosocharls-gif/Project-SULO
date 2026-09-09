@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SULO Prototype — Biogas Digester Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e4e4e7;
+            --muted: #71717a;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --teal: #14b8a6;
+            --purple: #a855f7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Login Page ─── */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-card h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+        }
+        .login-card h1 span { color: var(--teal); }
+        .login-card p {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus { border-color: var(--teal); }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--teal);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .demo-note {
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(20,184,166,0.1);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--teal);
+        }
+
+        /* ─── Dashboard Layout ─── */
+        .dashboard-container { display: none; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 1.4rem; font-weight: 700; }
+        .header h1 span { color: var(--teal); }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .unit-selector {
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+        }
+        .unit-selector:focus { border-color: var(--teal); }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .status-normal  { background: rgba(34,197,94,0.15); color: var(--green); }
+        .status-warning { background: rgba(234,179,8,0.15); color: var(--yellow); }
+        .status-critical{ background: rgba(239,68,68,0.15); color: var(--red); }
+        .conn-tag {
+            font-size: 0.75rem;
+            color: var(--green);
+            padding: 4px 10px;
+            border: 1px solid var(--green);
+            border-radius: 6px;
+        }
+        .btn-logout {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+        .sim-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn-sim {
+            padding: 6px 14px;
+            background: var(--purple);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-sim:hover { opacity: 0.8; }
+        .btn-sim.active {
+            background: var(--green);
+            color: #000;
+        }
+
+        /* ─── Stats Bar ─── */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 16px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .stat-value.green { color: var(--green); }
+        .stat-value.yellow { color: var(--yellow); }
+        .stat-value.red { color: var(--red); }
+        .stat-value.blue { color: var(--blue); }
+
+        /* ─── Unit Overview Grid ─── */
+        .units-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .units-section h3 {
+            font-size: 0.9rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+        .units-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .unit-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .unit-card:hover { border-color: var(--teal); }
+        .unit-card.active {
+            border-color: var(--teal);
+            background: rgba(20,184,166,0.05);
+        }
+        .unit-card h4 { font-size: 1rem; margin-bottom: 4px; }
+        .unit-location {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        .unit-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .unit-stat { font-size: 0.8rem; }
+        .unit-stat-label { color: var(--muted); }
+        .unit-stat-value { font-weight: 600; }
+
+        /* ─── Sensor Grid ─── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .card-unit {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--muted);
+            margin-left: 4px;
+        }
+        .card-range {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+        .valve-open { color: var(--red); }
+        .valve-closed { color: var(--green); }
+
+        /* ─── Charts Section ─── */
+        .charts-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 16px;
+        }
+        .chart-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .chart-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        /* ─── Alerts Table ─── */
+        .alerts-section {
+            padding: 0 24px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .alerts-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .alerts-header h3 {
+            font-size: 0.9rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-ack-all {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-ack-all:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: var(--muted); font-weight: 500; }
+        tr:last-child td { border-bottom: none; }
+        .severity-critical { color: var(--red); font-weight: 600; }
+        .severity-warning { color: var(--yellow); font-weight: 600; }
+        .btn-ack {
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid var(--green);
+            border-radius: 6px;
+            color: var(--green);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-ack:hover { background: var(--green); color: #000; }
+
+        /* ─── Footer ─── */
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr 1fr; padding: 0 16px 16px; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .stats-bar { flex-wrap: wrap; padding: 12px 16px; }
+            .stat-card { min-width: 120px; }
+            .card-value { font-size: 1.5rem; }
+            .header { flex-wrap: wrap; gap: 12px; }
+            .header-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ LOGIN PAGE ═══ -->
+    <div class="login-container" id="loginPage">
+        <div class="login-card">
+            <h1><span>SULO</span> Prototype</h1>
+            <p>Biogas Digester Monitoring System</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="admin@sulo.local" value="admin@sulo.local">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password" value="admin123">
+                </div>
+                <button type="submit" class="btn">Sign In</button>
+            </form>
+            <div class="demo-note">
+                🔧 <strong>Prototype Mode</strong> — Click Sign In with any credentials to explore
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="dashboard-container" id="dashboardPage">
+
+        <!-- Header -->
+        <div class="header">
+            <h1><span>SULO</span> — Admin Dashboard</h1>
+            <div class="header-actions">
+                <div class="sim-controls">
+                    <button class="btn-sim active" id="simToggle" onclick="toggleSimulation()">⏸ Pause</button>
+                    <select class="unit-selector" id="unitSelector">
+                        <option value="all">All Units</option>
+                    </select>
+                </div>
+                <span class="conn-tag" id="connStatus">● Live (Simulated)</span>
+                <div class="status-badge status-normal" id="overallStatus">Normal</div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Total Units</div>
+                <div class="stat-value blue" id="totalUnits">3</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Alerts</div>
+                <div class="stat-value yellow" id="activeAlerts">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Critical</div>
+                <div class="stat-value red" id="criticalCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Readings Today</div>
+                <div class="stat-value green" id="readingsToday">0</div>
+            </div>
+        </div>
+
+        <!-- Unit Overview Cards -->
+        <div class="units-section">
+            <h3>📦 Digester Units</h3>
+            <div class="units-grid" id="unitsGrid"></div>
+        </div>
+
+        <!-- Live Sensor Cards -->
+        <div class="dashboard" id="sensorCards" style="display:none;">
+            <div class="card">
+                <div class="card-label">🌡️ Temperature</div>
+                <div class="card-value" id="tempValue">--<span class="card-unit">°C</span></div>
+                <div class="card-range">Safe: 25–55 °C</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🧪 pH Level</div>
+                <div class="card-value" id="phValue">--</div>
+                <div class="card-range">Safe: 6.0–8.5</div>
+            </div>
+            <div class="card">
+                <div class="card-label">💨 Gas Level</div>
+                <div class="card-value" id="gasValue">--<span class="card-unit">ppm</span></div>
+                <div class="card-range">Max safe: 5000 ppm</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🔴 Pressure</div>
+                <div class="card-value" id="pressValue">--<span class="card-unit">kPa</span></div>
+                <div class="card-range">Max: 200 kPa (valve opens)</div>
+            </div>
+            <div class="card">
+                <div class="card-label">🌊 Flow Rate</div>
+                <div class="card-value" id="flowValue">--<span class="card-unit">L/min</span></div>
+                <div class="card-range">Methane output</div>
+            </div>
+            <div class="card">
+                <div class="card-label">⚙️ Solenoid Valve</div>
+                <div class="card-value valve-closed" id="valveStatus">CLOSED</div>
+                <div class="card-range" id="valveLabel">Normal operation</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-section" id="chartsSection" style="display:none;">
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Temperature & Pressure (24h)</h3>
+                    <div class="chart-container"><canvas id="tempPressChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3>pH & Gas Level (24h)</h3>
+                    <div class="chart-container"><canvas id="phGasChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="alerts-section">
+            <div class="alerts-card">
+                <div class="alerts-header">
+                    <h3>⚠️ Recent Alerts</h3>
+                    <button class="btn-ack-all" onclick="acknowledgeAll()">Acknowledge All</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Unit</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertsTable">
+                        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No alerts yet</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            SULO Prototype — Smart Utility for Local Organic Waste | Simulated Multi-Unit Monitoring
+        </div>
+    </div>
+
+    <script>
+    // ════════════════════════════════════════════════════════════
+    //  SULO PROTOTYPE — SIMULATED ESP32 + CLOUD DASHBOARD
+    //  No backend needed — runs entirely in the browser
+    // ════════════════════════════════════════════════════════════
+
+    // ─── Demo Units ───
+    const UNITS = [
+        { unit_id: 'unit-a', name: 'Karenderya Unit A', location: 'Main Kitchen, Brgy. Hilera' },
+        { unit_id: 'unit-b', name: 'Karenderya Unit B', location: 'Annex Kitchen, Brgy. Hilera' },
+        { unit_id: 'unit-c', name: 'Bakery Digester', location: 'Panaderia, Brgy. Hilera' }
+    ];
+
+    // ─── State ───
+    let selectedUnitId = 'all';
+    let simulationRunning = true;
+    let simulationInterval = null;
+    let alerts = [];
+    let readings = {};  // unit_id -> array of readings
+    let latestReadings = {};  // unit_id -> latest reading
+
+    // ─── Initialize readings storage ───
+    UNITS.forEach(u => {
+        readings[u.unit_id] = [];
+        latestReadings[u.unit_id] = null;
+    });
+
+    // ─── Login ───
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('dashboardPage').style.display = 'block';
+        initDashboard();
+    });
+
+    // ─── Logout ───
+    function logout() {
+        stopSimulation();
+        document.getElementById('dashboardPage').style.display = 'none';
+        document.getElementById('loginPage').style.display = 'flex';
+    }
+
+    // ─── Init Dashboard ───
+    function initDashboard() {
+        // Populate unit selector
+        const selector = document.getElementById('unitSelector');
+        selector.innerHTML = '<option value="all">All Units</option>';
+        UNITS.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.unit_id;
+            opt.textContent = u.name;
+            selector.appendChild(opt);
+        });
+        selector.addEventListener('change', (e) => selectUnit(e.target.value));
+
+        // Generate initial historical data (24h)
+        generateHistoricalData();
+
+        // Render
+        renderUnitCards();
+        updateStats();
+        updateAlertsTable();
+
+        // Start simulation
+        startSimulation();
+    }
+
+    // ─── ESP32 Simulator: Generate Reading ───
+    function generateReading(unitId) {
+        // Simulate realistic biogas digester sensor data
+        const baseTemp = unitId === 'unit-a' ? 35 : unitId === 'unit-b' ? 32 : 38;
+        const basePh = unitId === 'unit-a' ? 7.2 : unitId === 'unit-b' ? 7.0 : 6.8;
+        const baseGas = unitId === 'unit-a' ? 2500 : unitId === 'unit-b' ? 1800 : 3200;
+        const basePressure = unitId === 'unit-a' ? 105 : unitId === 'unit-b' ? 98 : 115;
+        const baseFlow = unitId === 'unit-a' ? 2.5 : unitId === 'unit-b' ? 1.8 : 3.1;
+
+        // Add realistic noise
+        const temp = baseTemp + (Math.random() - 0.5) * 6;
+        const ph = basePh + (Math.random() - 0.5) * 0.8;
+        const gas = baseGas + (Math.random() - 0.5) * 800;
+        const pressure = basePressure + (Math.random() - 0.5) * 30;
+        const flow = Math.max(0, baseFlow + (Math.random() - 0.5) * 1.5);
+
+        // Determine status
+        let status = 0; // normal
+        let valveOpen = false;
+
+        if (pressure > 200 || gas > 5000 || temp > 55 || temp < 25 || ph < 6.0 || ph > 8.5) {
+            status = 2; // critical
+            valveOpen = pressure > 200;
+        } else if (pressure > 180 || gas > 4500 || temp > 50 || temp < 30 || ph < 6.3 || ph > 8.2) {
+            status = 1; // warning
+        }
+
+        // Random chance of a critical event for demo purposes
+        if (Math.random() < 0.02) {
+            status = 2;
+            valveOpen = true;
+        }
+
+        return {
+            reading_id: Date.now() + Math.random(),
+            unit_id: unitId,
+            temperature: Math.round(temp * 100) / 100,
+            ph: Math.round(ph * 100) / 100,
+            gas_level: Math.round(gas * 100) / 100,
+            pressure: Math.round(pressure * 100) / 100,
+            flow_rate: Math.round(flow * 10000) / 10000,
+            status: status,
+            valve_open: valveOpen,
+            recorded_at: new Date().toISOString()
+        };
+    }
+
+    // ─── Generate 24h Historical Data ───
+    function generateHistoricalData() {
+        const now = Date.now();
+        const hoursAgo24 = now - 24 * 60 * 60 * 1000;
+
+        UNITS.forEach(u => {
+            readings[u.unit_id] = [];
+            // Generate one reading per 10 minutes for 24h = 144 readings
+            for (let t = hoursAgo24; t <= now; t += 10 * 60 * 1000) {
+                const reading = generateReading(u.unit_id);
+                reading.recorded_at = new Date(t).toISOString();
+                readings[u.unit_id].push(reading);
+            }
+            latestReadings[u.unit_id] = readings[u.unit_id][readings[u.unit_id].length - 1];
+        });
+    }
+
+    // ─── Start Simulation ───
+    function startSimulation() {
+        simulationRunning = true;
+        document.getElementById('simToggle').textContent = '⏸ Pause';
+        document.getElementById('simToggle').classList.add('active');
+
+        simulationInterval = setInterval(() => {
+            if (!simulationRunning) return;
+
+            UNITS.forEach(u => {
+                const reading = generateReading(u.unit_id);
+                readings[u.unit_id].push(reading);
+
+                // Keep only last 24h of data
+                const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+                readings[u.unit_id] = readings[u.unit_id].filter(r => new Date(r.recorded_at).getTime() > cutoff);
+
+                latestReadings[u.unit_id] = reading;
+
+                // Generate alerts for critical readings
+                if (reading.status === 2) {
+                    const alertTypes = ['overpressure', 'threshold_breach', 'system_error'];
+                    const messages = [
+                        `Critical: Pressure at ${reading.pressure} kPa exceeds 200 kPa limit`,
+                        `Critical: Gas level at ${reading.gas_level} ppm exceeds 5000 ppm limit`,
+                        `Critical: Temperature at ${reading.temperature}°C outside safe range`,
+                        `Critical: pH at ${reading.ph} outside safe range`
+                    ];
+                    const idx = Math.floor(Math.random() * messages.length);
+
+                    alerts.unshift({
+                        alert_id: Date.now() + Math.random(),
+                        unit_id: u.unit_id,
+                        unit_name: u.name,
+                        alert_type: alertTypes[idx % alertTypes.length],
+                        severity: 'critical',
+                        message: messages[idx],
+                        acknowledged: false,
+                        created_at: new Date().toISOString()
+                    });
+                } else if (reading.status === 1) {
+                    if (Math.random() < 0.3) {
+                        alerts.unshift({
+                            alert_id: Date.now() + Math.random(),
+                            unit_id: u.unit_id,
+                            unit_name: u.name,
+                            alert_type: 'threshold_warning',
+                            severity: 'warning',
+                            message: `Warning: Sensor readings approaching threshold limits`,
+                            acknowledged: false,
+                            created_at: new Date().toISOString()
+                        });
+                    }
+                }
+            });
+
+            // Keep only last 50 alerts
+            alerts = alerts.slice(0, 50);
+
+            // Update UI
+            renderUnitCards();
+            updateStats();
+            updateAlertsTable();
+            if (selectedUnitId !== 'all') {
+                updateSensorCards();
+                updateCharts();
+            }
+        }, 2000); // New reading every 2 seconds
+    }
+
+    // ─── Stop Simulation ───
+    function stopSimulation() {
+        if (simulationInterval) clearInterval(simulationInterval);
+    }
+
+    // ─── Toggle Simulation ───
+    function toggleSimulation() {
+        simulationRunning = !simulationRunning;
+        const btn = document.getElementById('simToggle');
+        if (simulationRunning) {
+            btn.textContent = '⏸ Pause';
+            btn.classList.add('active');
+            btn.style.background = 'var(--green)';
+        } else {
+            btn.textContent = '▶ Resume';
+            btn.classList.remove('active');
+            btn.style.background = 'var(--purple)';
+        }
+    }
+
+    // ─── Select Unit ───
+    function selectUnit(unitId) {
+        selectedUnitId = unitId;
+        document.getElementById('unitSelector').value = unitId;
+
+        const sensorCards = document.getElementById('sensorCards');
+        const chartsSection = document.getElementById('chartsSection');
+
+        if (unitId === 'all') {
+            sensorCards.style.display = 'none';
+            chartsSection.style.display = 'none';
+        } else {
+            sensorCards.style.display = 'grid';
+            chartsSection.style.display = 'block';
+            updateSensorCards();
+            updateCharts();
+        }
+
+        renderUnitCards();
+    }
+
+    // ─── Render Unit Cards ───
+    function renderUnitCards() {
+        const grid = document.getElementById('unitsGrid');
+        grid.innerHTML = '';
+
+        UNITS.forEach(u => {
+            const latest = latestReadings[u.unit_id];
+            const status = latest ? getStatusLabel(latest.status) : 'No Data';
+            const statusClass = latest ? getStatusClass(latest.status) : '';
+
+            const card = document.createElement('div');
+            card.className = `unit-card ${selectedUnitId === u.unit_id ? 'active' : ''}`;
+            card.onclick = () => selectUnit(u.unit_id);
+            card.innerHTML = `
+                <h4>${u.name}</h4>
+                <div class="unit-location">📍 ${u.location}</div>
+                <div class="status-badge ${statusClass}" style="margin-bottom:12px;">${status}</div>
+                <div class="unit-stats">
+                    <div class="unit-stat">
+                        <div class="unit-stat-label">Temp</div>
+                        <div class="unit-stat-value">${latest ? latest.temperature + '°C' : '--'}</div>
+                    </div>
+                    <div class="unit-stat">
+                        <div class="unit-stat-label">pH</div>
+                        <div class="unit-stat-value">${latest ? latest.ph : '--'}</div>
+                    </div>
+                    <div class="unit-stat">
+                        <div class="unit-stat-label">Gas</div>
+                        <div class="unit-stat-value">${latest ? latest.gas_level + ' ppm' : '--'}</div>
+                    </div>
+                    <div class="unit-stat">
+                        <div class="unit-stat-label">Pressure</div>
+                        <div class="unit-stat-value">${latest ? latest.pressure + ' kPa' : '--'}</div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // ─── Update Sensor Cards ───
+    function updateSensorCards() {
+        const latest = latestReadings[selectedUnitId];
+        if (!latest) return;
+
+        document.getElementById('tempValue').innerHTML = `${latest.temperature.toFixed(1)}<span class="card-unit">°C</span>`;
+        document.getElementById('phValue').textContent = latest.ph.toFixed(2);
+        document.getElementById('gasValue').innerHTML = `${latest.gas_level.toFixed(0)}<span class="card-unit">ppm</span>`;
+        document.getElementById('pressValue').innerHTML = `${latest.pressure.toFixed(1)}<span class="card-unit">kPa</span>`;
+        document.getElementById('flowValue').innerHTML = `${latest.flow_rate.toFixed(2)}<span class="card-unit">L/min</span>`;
+
+        const valveEl = document.getElementById('valveStatus');
+        const valveLabel = document.getElementById('valveLabel');
+        if (latest.valve_open) {
+            valveEl.textContent = 'OPEN';
+            valveEl.className = 'card-value valve-open';
+            valveLabel.textContent = '⚠ Venting excess pressure';
+        } else {
+            valveEl.textContent = 'CLOSED';
+            valveEl.className = 'card-value valve-closed';
+            valveLabel.textContent = 'Normal operation';
+        }
+
+        const statusBadge = document.getElementById('overallStatus');
+        const statusMap = { 0: ['Normal', 'status-normal'], 1: ['Warning', 'status-warning'], 2: ['Critical', 'status-critical'] };
+        const [label, cls] = statusMap[latest.status] || statusMap[0];
+        statusBadge.textContent = label;
+        statusBadge.className = `status-badge ${cls}`;
+    }
+
+    // ─── Update Charts ───
+    function updateCharts() {
+        const data = readings[selectedUnitId];
+        if (!data || !data.length) return;
+
+        // Group by hour
+        const hourlyData = {};
+        data.forEach(r => {
+            const hour = new Date(r.recorded_at).getHours().toString().padStart(2, '0') + ':00';
+            if (!hourlyData[hour]) hourlyData[hour] = { temp: [], ph: [], gas: [], press: [] };
+            hourlyData[hour].temp.push(parseFloat(r.temperature));
+            hourlyData[hour].ph.push(parseFloat(r.ph));
+            hourlyData[hour].gas.push(parseFloat(r.gas_level));
+            hourlyData[hour].press.push(parseFloat(r.pressure));
+        });
+
+        const labels = Object.keys(hourlyData).slice(-12);
+        const avgTemp = labels.map(h => (hourlyData[h].temp.reduce((a,b) => a+b, 0) / hourlyData[h].temp.length).toFixed(1));
+        const avgPh = labels.map(h => (hourlyData[h].ph.reduce((a,b) => a+b, 0) / hourlyData[h].ph.length).toFixed(2));
+        const avgGas = labels.map(h => (hourlyData[h].gas.reduce((a,b) => a+b, 0) / hourlyData[h].gas.length).toFixed(0));
+        const avgPress = labels.map(h => (hourlyData[h].press.reduce((a,b) => a+b, 0) / hourlyData[h].press.length).toFixed(1));
+
+        if (window.tempPressChartInstance) {
+            tempPressChartInstance.data.labels = labels;
+            tempPressChartInstance.data.datasets[0].data = avgTemp;
+            tempPressChartInstance.data.datasets[1].data = avgPress;
+            tempPressChartInstance.update('none');
+        }
+        if (window.phGasChartInstance) {
+            phGasChartInstance.data.labels = labels;
+            phGasChartInstance.data.datasets[0].data = avgPh;
+            phGasChartInstance.data.datasets[1].data = avgGas;
+            phGasChartInstance.update('none');
+        }
+    }
+
+    // ─── Update Stats ───
+    function updateStats() {
+        const activeAlerts = alerts.filter(a => !a.acknowledged).length;
+        const criticalAlerts = alerts.filter(a => !a.acknowledged && a.severity === 'critical').length;
+
+        let totalReadings = 0;
+        UNITS.forEach(u => { totalReadings += readings[u.unit_id].length; });
+
+        document.getElementById('totalUnits').textContent = UNITS.length;
+        document.getElementById('activeAlerts').textContent = activeAlerts;
+        document.getElementById('criticalCount').textContent = criticalAlerts;
+        document.getElementById('readingsToday').textContent = totalReadings;
+    }
+
+    // ─── Update Alerts Table ───
+    function updateAlertsTable() {
+        const tbody = document.getElementById('alertsTable');
+        const displayAlerts = selectedUnitId === 'all' ? alerts : alerts.filter(a => a.unit_id === selectedUnitId);
+
+        if (!displayAlerts.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No alerts yet</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = displayAlerts.slice(0, 15).map(a => {
+            const time = new Date(a.created_at).toLocaleTimeString();
+            const sevClass = a.severity === 'critical' ? 'severity-critical' : 'severity-warning';
+            const ack = a.acknowledged
+                ? '<span style="color:var(--green);">✅ Done</span>'
+                : `<button class="btn-ack" onclick="acknowledgeAlert('${a.alert_id}')">Ack</button>`;
+            return `<tr>
+                <td>${time}</td>
+                <td>${a.unit_name}</td>
+                <td>${a.alert_type}</td>
+                <td class="${sevClass}">${a.severity.toUpperCase()}</td>
+                <td>${a.message}</td>
+                <td>${ack}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ─── Acknowledge Alert ───
+    function acknowledgeAlert(alertId) {
+        const alert = alerts.find(a => String(a.alert_id) === String(alertId));
+        if (alert) alert.acknowledged = true;
+        updateAlertsTable();
+        updateStats();
+    }
+
+    // ─── Acknowledge All ───
+    function acknowledgeAll() {
+        alerts.forEach(a => a.acknowledged = true);
+        updateAlertsTable();
+        updateStats();
+    }
+
+    // ─── Helpers ───
+    function getStatusLabel(status) {
+        return { 0: 'Normal', 1: 'Warning', 2: 'Critical' }[status] || 'Unknown';
+    }
+    function getStatusClass(status) {
+        return { 0: 'status-normal', 1: 'status-warning', 2: 'status-critical' }[status] || '';
+    }
+
+    // ─── Charts ───
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: '#71717a', font: { size: 11 } } } },
+        scales: {
+            x: { ticks: { color: '#71717a', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#2a2d3a' } },
+            y: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { color: '#2a2d3a' } }
+        }
+    };
+
+    window.tempPressChartInstance = new Chart(document.getElementById('tempPressChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Temp (°C)', borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3, fill: true, data: [] },
+                { label: 'Pressure (kPa)', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true, yAxisID: 'y1', data: [] }
+            ]
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, position: 'left', title: { display: true, text: '°C', color: '#71717a' } }, y1: { ...chartOptions.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'kPa', color: '#71717a' } } } }
+    });
+
+    window.phGasChartInstance = new Chart(document.getElementById('phGasChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'pH', borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, fill: true, data: [] },
+                { label: 'Gas (ppm)', borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.1)', tension: 0.3, fill: true, yAxisID: 'y1', data: [] }
+            ]
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, position: 'left', title: { display: true, text: 'pH', color: '#71717a' } }, y1: { ...chartOptions.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'ppm', color: '#71717a' } } } }
+    });
+    </script>
+</body>
+</html>
