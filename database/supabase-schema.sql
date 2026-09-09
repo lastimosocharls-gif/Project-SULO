@@ -168,10 +168,10 @@ CREATE POLICY "Admins can manage units"
 INSERT INTO admins (email, password_hash, full_name, role) VALUES
     ('admin@sulo.local', '$2y$10$YourHashedPasswordHere', 'System Administrator', 'admin');
 
--- Insert sample units
-INSERT INTO units (name, location, description) VALUES
-    ('Karenderya Unit A', 'Main Kitchen, Brgy. Hilera', 'Primary biogas digester for kitchen waste'),
-    ('Karenderya Unit B', 'Annex Kitchen, Brgy. Hilera', 'Secondary digester for overflow waste');
+-- NOTE: Add your digester units via the admin dashboard or SQL:
+-- INSERT INTO units (name, location, description) VALUES
+--     ('Karenderya Unit A', 'Main Kitchen, Brgy. Hilera', 'Primary biogas digester'),
+--     ('Karenderya Unit B', 'Annex Kitchen, Brgy. Hilera', 'Secondary digester');
 
 -- ============================================================
 -- SCHEMA COMPLETE

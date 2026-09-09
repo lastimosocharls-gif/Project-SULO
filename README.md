@@ -6,72 +6,132 @@
 
 SULO monitors multiple biogas digesters in real-time using ESP32-connected sensors. All data is stored in the cloud via Supabase (PostgreSQL). An admin dashboard is accessible from anywhere with internet — **no Raspberry Pi needed**.
 
-## Architecture
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Cloud (Supabase)                         │
-│                                                                 │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐   │
-│  │  PostgreSQL   │   │   Auth       │   │  Realtime        │   │
-│  │  Database     │   │   Service    │   │  Subscriptions   │   │
-│  └──────────────┘   └──────────────┘   └──────────────────┘   │
-│           ↑                  ↑                    ↑              │
-│           └──────────────────┴────────────────────┘              │
-│                              ↑                                   │
-│                    ┌─────────┴─────────┐                        │
-│                    │  Admin Dashboard   │                        │
-│                    │  (Web App)         │                        │
-│                    └─────────┬─────────┘                        │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │ Internet
-              ┌────────────────┼────────────────┐
-              │                │                │
-     ┌────────┴────────┐ ┌────┴──────┐ ┌───────┴───────┐
-     │  ESP32 Unit A   │ │ ESP32 Unit B│ │ ESP32 Unit C  │
-     │  (Karenderya)   │ │ (Kitchen)  │ │ (Bakery)      │
-     └─────────────────┘ └───────────┘ └───────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           HARDWARE LAYER (On-Site)                          │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                     Biogas Digester Unit                            │  │
+│   │                                                                     │  │
+│   │   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │  │
+│   │   │ DS18B20  │ │ pH       │ │ MQ-4     │ │ BMP280   │ │ YF-S401│ │  │
+│   │   │ Temp     │ │ Sensor   │ │ Gas      │ │ Pressure │ │ Flow   │ │  │
+│   │   └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │  │
+│   │        │            │            │            │            │      │  │
+│   │        └────────────┴────────────┴─────┬──────┴────────────┘      │  │
+│   │                                        │                          │  │
+│   │                                        ▼                          │  │
+│   │                              ┌─────────────────┐                  │  │
+│   │                              │   ESP32 DevKit   │                  │  │
+│   │                              │   (Edge Device)  │                  │  │
+│   │                              └────────┬────────┘                  │  │
+│   │                                       │                           │  │
+│   │                    ┌──────────────────┼──────────────────┐        │  │
+│   │                    ▼                  ▼                  ▼        │  │
+│   │            ┌──────────────┐   ┌──────────────┐   ┌────────────┐  │  │
+│   │            │ SSD1306 OLED │   │ Relay Module │   │ IR Receiver│  │  │
+│   │            │ (Display)    │   │ (Valve Ctrl) │   │ (Remote)   │  │  │
+│   │            └──────────────┘   └──────┬───────┘   └────────────┘  │  │
+│   │                                       │                          │  │
+│   │                                       ▼                          │  │
+│   │                              ┌─────────────────┐                  │  │
+│   │                              │ Solenoid Valve   │                  │  │
+│   │                              │ (12V NC)         │                  │  │
+│   │                              │ Overpressure     │                  │  │
+│   │                              │ Fail-safe        │                  │  │
+│   │                              └─────────────────┘                  │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────┬──────────────────────────────────┘
+                                          │
+                                          │ WiFi (Internet)
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CLOUD LAYER (Supabase)                            │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                         Supabase Platform                          │  │
+│   │                                                                     │  │
+│   │   ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐      │  │
+│   │   │  PostgreSQL  │   │    Auth      │   │    Realtime      │      │  │
+│   │   │  Database    │   │   Service    │   │   Subscriptions  │      │  │
+│   │   │              │   │              │   │                  │      │  │
+│   │   │ • units      │   │ • Login      │   │ • Live updates   │      │  │
+│   │   │ • readings   │   │ • Sessions   │   │ • Auto-refresh   │      │  │
+│   │   │ • alerts     │   │ • RLS        │   │ • No polling     │      │  │
+│   │   │ • status     │   │              │   │                  │      │  │
+│   │   └──────┬───────┘   └──────┬───────┘   └────────┬─────────┘      │  │
+│   │          │                  │                     │                │  │
+│   │          └──────────────────┴─────────────────────┘                │  │
+│   └─────────────────────────────────────┬─────────────────────────────┘  │
+└──────────────────────────────────────────┼──────────────────────────────────┘
+                                          │
+                                          │ Internet
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SOFTWARE LAYER (Dashboard)                         │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                      Admin Dashboard (Web App)                     │  │
+│   │                                                                     │  │
+│   │   • Login with email/password (Supabase Auth)                      │  │
+│   │   • View all digester units                                        │  │
+│   │   • Real-time sensor data (temperature, pH, gas, pressure, flow)   │  │
+│   │   • Live charts (24h history)                                      │  │
+│   │   • Alert notifications (warning/critical)                         │  │
+│   │   • Acknowledge alerts                                             │  │
+│   │   • Accessible from any device with internet                       │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## How It Works
 
-1. **Power On** → ESP32 initializes all sensors, connects to local WiFi, connects to Laravel API
+1. **Power On** → ESP32 initializes all sensors, connects to WiFi with internet access
 2. **Poll Sensors** → Every 10 seconds: temperature, pH, gas, pressure, flow rate
 3. **Evaluate Thresholds** → Compare readings against safe ranges
 4. **Update Display** → OLED shows current values + status (Normal/Warning/Critical)
-5. **Send Data** → HTTP POST JSON to local Laravel API over WiFi
-6. **Fail-Safe** → Critical overpressure → solenoid valve opens automatically
-7. **IR Remote** → Navigate display screens, silence alerts
-8. **Dashboard** → Open `http://192.168.4.1:8000` on any LAN device for live data, charts, alerts
-9. **Alerts** → Both LCD and dashboard reflect threshold breaches immediately
-10. **Repeat** → Steps 2–9 loop continuously
+5. **Send Data** → HTTP POST JSON to Supabase cloud REST API via internet
+6. **Cloud Storage** → Supabase PostgreSQL stores readings with unit_id
+7. **Fail-Safe** → Critical overpressure → solenoid valve opens automatically (local on ESP32)
+8. **IR Remote** → Navigate display screens, silence alerts
+9. **Dashboard** → Admin logs in from anywhere, views live data, charts, alerts
+10. **Real-time** → Dashboard updates automatically via Supabase Realtime subscriptions
+11. **Alerts** → Threshold breaches trigger alerts visible on dashboard immediately
+12. **Repeat** → Steps 2–11 loop continuously
 
 ## Directory Structure
 
 ```
 Project-SULO/
-├── firmware/              # ESP32 Arduino/PlatformIO code
-│   ├── ESP32.ino          # Main sketch
-│   ├── config.h           # Configuration (WiFi, pins, thresholds)
-│   ├── sensors.cpp/h      # Sensor reading + threshold evaluation
-│   ├── display.cpp/h      # OLED multi-screen display
-│   ├── wifi.cpp/h         # WiFi connection + HTTP POST
-│   ├── failsafe.cpp/h     # Solenoid valve fail-safe logic
-│   └── platformio.ini     # PlatformIO project config
+├── firmware/                 # ESP32 Arduino/PlatformIO code
+│   ├── ESP32.ino             # Main sketch
+│   ├── config.h              # Config (WiFi, Supabase, pins, thresholds)
+│   ├── sensors.cpp/h         # Sensor reading + threshold evaluation
+│   ├── display.cpp/h         # OLED multi-screen display
+│   ├── wifi.cpp/h            # WiFi + HTTP POST to Supabase cloud
+│   ├── failsafe.cpp/h        # Solenoid valve fail-safe logic
+│   └── platformio.ini        # PlatformIO project config
 │
-├── backend/               # Laravel API (runs on Raspberry Pi)
-│   ├── app/Http/Controllers/
-│   ├── app/Models/
-│   ├── routes/
-│   ├── resources/views/   # Dashboard Blade template
-│   ├── database/migrations/
-│   └── composer.json
+├── database/                 # Cloud database schema
+│   └── supabase-schema.sql   # Supabase PostgreSQL schema (multi-unit)
 │
-├── scripts/
-│   └── setup-rpi.sh       # One-command Raspberry Pi setup
+├── admin/                    # Admin dashboard (static HTML)
+│   └── index.html            # Login + multi-unit monitoring
 │
-└── documentation/
-    └── SYSTEM_ARCHITECTURE.MD
+├── prototype/                # Standalone demo (no backend needed)
+│   ├── index.html            # Dashboard prototype with simulated data
+│   └── esp32-simulator.html  # ESP32 serial monitor simulator
+│
+├── documentation/
+│   ├── SYSTEM_ARCHITECTURE.MD
+│   └── SULO_MANUAL.md
+│
+├── CLOUD_SETUP.md            # Step-by-step cloud deployment guide
+└── README.md
 ```
 
 ## Quick Start
@@ -130,7 +190,7 @@ Project-SULO/
 
 ## Delimitation Note
 
-> The system operates exclusively on a local WiFi network. Dashboard access requires being physically connected to the same LAN (e.g., inside the karenderya). Off-site or remote access is not available unless VPN or port-forwarding is configured. This is a deliberate design choice to eliminate internet dependency and reduce operational costs.
+> The system requires internet connectivity for the ESP32 to send data to the Supabase cloud. The admin dashboard can be accessed from anywhere with internet — no VPN or port-forwarding needed. The ESP32 continues local fail-safe operations (solenoid valve) even if internet connection is temporarily lost.
 
 ## Tech Stack
 
