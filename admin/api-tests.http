@@ -1,0 +1,207 @@
+### ════════════════════════════════════════════════════════════════
+### SULO API Tests — Supabase REST API
+### Use with REST Client extension (humao.rest-client)
+### ════════════════════════════════════════════════════════════════
+
+### ─── Configuration ───
+@supabaseUrl = https://your-project.supabase.co
+@supabaseAnonKey = your-anon-key-here
+@contentType = application/json
+@authorization = Bearer {{supabaseAnonKey}}
+
+### ════════════════════════════════════════════════════════════════
+### 1. UNITS ENDPOINTS
+### ════════════════════════════════════════════════════════════════
+
+### Get all units
+GET {{supabaseUrl}}/rest/v1/units?select=* HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get active units only
+GET {{supabaseUrl}}/rest/v1/units?is_active=eq.true&select=* HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get single unit by ID
+GET {{supabaseUrl}}/rest/v1/units?unit_id=eq.YOUR-UNIT-ID&select=* HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Create new unit
+POST {{supabaseUrl}}/rest/v1/units HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+{
+    "name": "Karenderya Unit C",
+    "location": "New Kitchen, Brgy. Hilera",
+    "description": "Third digester unit for testing"
+}
+
+### ════════════════════════════════════════════════════════════════
+### 2. SENSOR READINGS ENDPOINTS
+### ════════════════════════════════════════════════════════════════
+
+### Get latest reading for a unit
+GET {{supabaseUrl}}/rest/v1/sensor_readings?unit_id=eq.YOUR-UNIT-ID&order=recorded_at.desc&limit=1 HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get last 10 readings for a unit
+GET {{supabaseUrl}}/rest/v1/sensor_readings?unit_id=eq.YOUR-UNIT-ID&order=recorded_at.desc&limit=10 HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get readings from last 24 hours
+GET {{supabaseUrl}}/rest/v1/sensor_readings?unit_id=eq.YOUR-UNIT-ID&recorded_at=gte.{{now-24h}}&order=recorded_at.desc HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get readings by status (critical only)
+GET {{supabaseUrl}}/rest/v1/sensor_readings?unit_id=eq.YOUR-UNIT-ID&status=eq.2&order=recorded_at.desc HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Create new sensor reading (ESP32 endpoint)
+POST {{supabaseUrl}}/rest/v1/sensor_readings HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+{
+    "unit_id": "YOUR-UNIT-ID",
+    "temperature": 35.5,
+    "ph": 7.2,
+    "gas_level": 2500.00,
+    "pressure": 105.50,
+    "flow_rate": 2.5000,
+    "status": 0,
+    "valve_open": false
+}
+
+### ════════════════════════════════════════════════════════════════
+### 3. ALERTS ENDPOINTS
+### ════════════════════════════════════════════════════════════════
+
+### Get all unacknowledged alerts
+GET {{supabaseUrl}}/rest/v1/alerts?acknowledged=eq.false&order=created_at.desc HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get critical alerts
+GET {{supabaseUrl}}/rest/v1/alerts?severity=eq.critical&acknowledged=eq.false&order=created_at.desc HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get alerts for specific unit
+GET {{supabaseUrl}}/rest/v1/alerts?unit_id=eq.YOUR-UNIT-ID&order=created_at.desc&limit=20 HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Create new alert (ESP32 endpoint)
+POST {{supabaseUrl}}/rest/v1/alerts HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+{
+    "unit_id": "YOUR-UNIT-ID",
+    "reading_id": 123,
+    "alert_type": "overpressure",
+    "severity": "critical",
+    "message": "Pressure at 210 kPa exceeds 200 kPa limit"
+}
+
+### Acknowledge an alert
+PATCH {{supabaseUrl}}/rest/v1/alerts?alert_id=eq.ALERT-ID HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+{
+    "acknowledged": true,
+    "acknowledged_at": "2026-09-09T12:00:00Z"
+}
+
+### ════════════════════════════════════════════════════════════════
+### 4. DIGESTER STATUS ENDPOINTS
+### ════════════════════════════════════════════════════════════════
+
+### Get current status for all units
+GET {{supabaseUrl}}/rest/v1/digester_status?select=*,units(name) HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get status for specific unit
+GET {{supabaseUrl}}/rest/v1/digester_status?unit_id=eq.YOUR-UNIT-ID&select=* HTTP/1.1
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### ════════════════════════════════════════════════════════════════
+### 5. AUTHENTICATION ENDPOINTS
+### ════════════════════════════════════════════════════════════════
+
+### Sign in with email/password
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+
+{
+    "email": "admin@sulo.local",
+    "password": "your-password"
+}
+
+### Get current user
+GET {{supabaseUrl}}/auth/v1/user HTTP/1.1
+Authorization: Bearer YOUR-JWT-TOKEN
+apikey: {{supabaseAnonKey}}
+
+### Sign out
+POST {{supabaseUrl}}/auth/v1/logout HTTP/1.1
+Authorization: Bearer YOUR-JWT-TOKEN
+apikey: {{supabaseAnonKey}}
+
+### ════════════════════════════════════════════════════════════════
+### 6. REALTIME SUBSCRIPTION TEST
+### ════════════════════════════════════════════════════════════════
+
+### Subscribe to sensor_readings changes (WebSocket)
+### Note: This is a WebSocket connection, use a WebSocket client
+### URL: wss://your-project.supabase.co/realtime/v1/websocket
+### Auth: Bearer {{supabaseAnonKey}}
+### Channels: [{"topic":"sensor_readings","event":"*","schema":"public","table":"sensor_readings"}]
+
+### ════════════════════════════════════════════════════════════════
+### 7. HELPER QUERIES
+### ════════════════════════════════════════════════════════════════
+
+### Get average readings per unit (last 24h)
+GET {{supabaseUrl}}/rest/v1/rpc/get_average_readings HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### Get unit statistics
+GET {{supabaseUrl}}/rest/v1/rpc/get_unit_stats HTTP/1.1
+Content-Type: {{contentType}}
+apikey: {{supabaseAnonKey}}
+Authorization: {{authorization}}
+
+### ════════════════════════════════════════════════════════════════
+### NOTES:
+### ════════════════════════════════════════════════════════════════
+### 
+### 1. Replace YOUR-UNIT-ID with actual UUID from units table
+### 2. Replace ALERT-ID with actual alert_id
+### 3. Replace supabaseAnonKey with your actual anon key
+### 4. All requests require 'apikey' header
+### 5. Authenticated requests require 'Authorization: Bearer <token>'
+### 6. Use ?select=* to get all columns
+### 7. Use ?select=column1,column2 to get specific columns
+### 8. Use ?order=column.desc for descending order
+### 9. Use ?limit=N to limit results
+### 10. Use ?column=eq.value for exact match
+### 
+### ════════════════════════════════════════════════════════════════

@@ -1,6 +1,17 @@
 {
     "recommendations": [
         "platformio.platformio-ide",
-        "ms-vscode.cpptools"
+        "ms-vscode.cpptools",
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "humao.rest-client",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "yzhang.markdown-all-in-one"
     ]
 }

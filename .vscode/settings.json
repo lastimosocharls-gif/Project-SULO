@@ -1,0 +1,109 @@
+{
+    // ─── SULO VS Code Settings ───
+    // Updated for cloud-based Supabase architecture
+
+    // ─── Editor Settings ───
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": true,
+
+    // ─── File Associations ───
+    "files.associations": {
+        "*.h": "cpp",
+        "*.cpp": "cpp",
+        "*.ino": "cpp",
+        "*.blade.php": "html",
+        "*.sql": "sql"
+    },
+
+    // ─── Exclude from Workspace ───
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/.pio": true,
+        "**/node_modules": true,
+        "**/__pycache__": true
+    },
+
+    // ─── Search Excludes ───
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.pio": true,
+        "**/vendor": true,
+        "**/.git": true
+    },
+
+    // ─── PHP Settings (Laravel Backend - Legacy) ───
+    "php.validate.executablePath": "C:/php/php.exe",
+    "[php]": {
+        "editor.defaultFormatter": "junstyle.php-cs-fixer",
+        "editor.formatOnSave": true
+    },
+
+    // ─── HTML Settings (Admin Dashboard) ───
+    "[html]": {
+        "editor.defaultFormatter": "vscode.html-language-features",
+        "editor.formatOnSave": true
+    },
+
+    // ─── CSS Settings ───
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+
+    // ─── JavaScript Settings (Dashboard + ESP32 Simulator) ───
+    "[javascript]": {
+        "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+        "editor.formatOnSave": true
+    },
+
+    // ─── SQL Settings (Supabase Schema) ───
+    "[sql]": {
+        "editor.defaultFormatter": "mtxr.sqltools",
+        "editor.formatOnSave": true
+    },
+
+    // ─── Markdown Settings ───
+    "[markdown]": {
+        "editor.wordWrap": "on",
+        "editor.formatOnSave": true
+    },
+
+    // ─── C/C++ Settings (ESP32 Firmware) ───
+    "C_Cpp.default.cStandard": "gnu17",
+    "C_Cpp.default.cppStandard": "gnu++17",
+    "C_Cpp.default.intelliSenseMode": "windows-gcc-x64",
+
+    // ─── REST Client Settings (API Testing) ───
+    "rest-client.environmentVariables": {
+        "$shared": {
+            "supabaseUrl": "https://your-project.supabase.co",
+            "supabaseAnonKey": "your-anon-key-here"
+        }
+    },
+
+    // ─── SQLTools Settings (Database) ───
+    "sqltools.connections": [
+        {
+            "name": "SULO Supabase",
+            "driver": "PostgreSQL",
+            "connectionMethod": "URL",
+            "url": "postgresql://postgres:[YOUR-PASSWORD]@db.your-project.supabase.co:5432/postgres"
+        }
+    ],
+
+    // ─── Workbench Settings ───
+    "workbench.startupEditor": "readme",
+    "workbench.editor.enablePreview": true,
+
+    // ─── Terminal Settings ───
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        }
+    }
+}
